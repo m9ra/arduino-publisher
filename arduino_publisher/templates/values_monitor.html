@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% from 'bootstrap/nav.html' import render_nav_item, render_breadcrumb_item %}
+
+{% block content %}
+    <h1>Values monitor</h1>
+    <div id="serial_message">
+
+    </div>
+    <div class="values_monitor card-columns">
+        <h4>Loading...</h4>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script id="value_card" type="text/template">
+        <div class="card">
+            <h4 class="card-header"></h4>
+            <div class="card-body" style="padding: 0.3rem 1rem 0.2rem 1rem">
+                <h3 class="card-title"></h3>
+            </div>
+        </div>
+    </script>
+
+    <script>
+
+        let isInitialized = false;
+        let monitor = $(".values_monitor");
+        let serial_message = $("#serial_message");
+        let cards = [];
+        let lastUpdates = {};
+
+        function refresh_monitor() {
+            $.get("/parsed_values_data", function (raw_data) {
+                let data = format_data(raw_data);
+                if (!isInitialized) {
+                    monitor.empty();
+                    isInitialized = true;
+                }
+
+                for (let info of data) {
+                    update_field(info)
+                }
+
+                for (let i = data.length; i < cards.length; ++i) {
+                    cards[i].remove();
+                    delete cards[i];
+                    delete lastUpdates[data['field']];
+                }
+
+            }).always(
+                function () {
+                    setTimeout(refresh_monitor, 1000);
+                }
+            );
+        }
+
+        function format_data(raw_data) {
+            /*j raw_data = {
+                 "1.V": {
+                     "field": "1.V",
+                     "updated_at": 1601062865.379878,
+                     "value": "0"
+                 },
+                 "10.\u00b0C in": {
+                     "field": "10.\u00b0C in",
+                     "updated_at": 1601062865.420253,
+                     "value": "21.19"
+                 },
+                 "11.\u00b0C out": {
+                     "field": "11.\u00b0C out",
+                     "updated_at": 1601062865.447738,
+                     "value": "8.06"
+                 },
+                 "2.A": {
+                     "field": "2.A",
+                     "updated_at": 1601062865.381716,
+                     "value": "0.00"
+                 },
+                 "3.Kw": {
+                     "field": "3.Kw",
+                     "updated_at": 1601062865.383552,
+                     "value": "0.00"
+                 },
+                 "4.Kwmax": {
+                     "field": "4.Kwmax",
+                     "updated_at": 1601062865.37836,
+                     "value": "0.00"
+                 },
+                 "5.Kwh": {
+                     "field": "5.Kwh",
+                     "updated_at": 1601062865.376335,
+                     "value": "0.00"
+                 },
+                 "6.\u00b0C bojler": {
+                     "field": "6.\u00b0C bojler",
+                     "updated_at": 1601062865.479664,
+                     "value": "-127.00"
+                 },
+                 "7.\u00b0C n\u00e1dr\u017e": {
+                     "field": "7.\u00b0C n\u00e1dr\u017e",
+                     "updated_at": 1601062865.507687,
+                     "value": "-127.00"
+                 },
+                 "8.\u00b0C kotel": {
+                     "field": "8.\u00b0C kotel",
+                     "updated_at": 1601062865.536419,
+                     "value": "-127.00"
+                 },
+                 "9.\u00b0C zp\u00e1te\u010dka": {
+                     "field": "9.\u00b0C zp\u00e1te\u010dka",
+                     "updated_at": 1601062865.567059,
+                     "value": "-127.00"
+                 }
+             };*/
+
+
+            let result = [];
+            for (let field in raw_data) {
+                let info = raw_data[field];
+                let parts = limited_split(field, '.', 2);
+                if (parts.length === 2 && !isNaN(parts[0])) {
+                    info['order'] = parseInt(parts[0]);
+                    info['field'] = parts[1];
+                } else {
+                    info['order'] = 100000;
+                }
+
+                result.push(info);
+            }
+
+            result.sort((a, b) => (a['order'] > b['order']) ? 1 : ((b['order'] > a['order']) ? -1 : 0));
+            return result;
+        }
+
+        function limited_split(string, delimiter, n) {
+            var parts = string.split(delimiter);
+            return parts.slice(0, n - 1).concat([parts.slice(n - 1).join(delimiter)]);
+        }
+
+        function update_field(info) {
+            let field = info['field'];
+            if (field === 'message') {
+                //serial_message.html("<b>Message: </b> " + info['value']);
+                return;
+            }
+
+            if (cards[field] === undefined) {
+                monitor.append($('#value_card').html());
+                cards[field] = monitor.children().last();
+            }
+
+            let card = cards[field];
+            if (field.startsWith('\u00b0C')) {
+                field = field.substring(2).trim();
+                info['value'] = parseFloat(info['value']).toFixed(1) + ' \u00b0C';
+            }
+            if (field.startsWith('%')) {
+                field = field.substring(1).trim();
+                info['value'] = info['value'] + ' %';
+            }
+            card.find('.card-header').text(field);
+            card.find('.card-title').text(info['value']);
+        }
+
+        refresh_monitor();
+
+    </script>
+{% endblock %}

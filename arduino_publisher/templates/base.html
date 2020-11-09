@@ -1,0 +1,81 @@
+{% from 'bootstrap/nav.html' import render_nav_item %}
+{% from 'bootstrap/utils.html' import render_messages %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Arduino Data publisher</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    {{ bootstrap.load_css() }}
+    <style>
+        .time {
+            padding-right: 10px;
+            width: 40px;
+            color: green;
+        }
+
+        .line {
+            color: darkcyan;
+            font-weight: bolder;
+        }
+
+        #serial_message {
+            margin: 10px;
+            font-size: larger;
+        }
+
+        @media (min-width: 576px) {
+            .card-columns {
+                column-count: 2;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .card-columns {
+                column-count: 3;
+            }
+        }
+
+        @media (min-width: 992px) {
+            .card-columns {
+                column-count: 4;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .card-columns {
+                column-count: 5;
+            }
+        }
+
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+            {{ render_nav_item('index', 'Values monitor', use_li=True) }}
+            {{ render_nav_item('serial_monitor', 'Serial monitor', use_li=True) }}
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+    {{ render_messages(container=False, dismissible=True) }}
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="text-center">
+    {% block footer %}
+
+    {% endblock %}
+</footer>
+
+{{ bootstrap.load_js() }}
+</body>
+</html>

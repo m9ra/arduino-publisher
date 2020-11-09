@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% from 'bootstrap/nav.html' import render_nav_item, render_breadcrumb_item %}
+
+{% block content %}
+    <h1>Serial monitor</h1>
+    <div class="serial_monitor">
+        <h4>Loading...</h4>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+
+        let isInitialized = false;
+        let maxId = 0;
+        let monitor = $(".serial_monitor");
+
+        function date2str(d, f) {
+            var z = {
+                M: d.getMonth() + 1,
+                d: d.getDate(),
+                h: d.getHours(),
+                m: d.getMinutes(),
+                s: d.getSeconds()
+            };
+            f = f.replace(/(M+|d+|h+|m+|s+)/g, function (v) {
+                return ((v.length > 1 ? "0" : "") + eval('z.' + v.slice(-1))).slice(-2)
+            });
+
+            return f.replace(/(y+)/g, function (v) {
+                return d.getFullYear().toString().slice(-v.length)
+            });
+        }
+
+        function refresh_monitor() {
+            $.get("/serial_monitor_data", function (data) {
+                if (!isInitialized) {
+                    monitor.empty();
+                    isInitialized = true;
+                }
+
+                for (item of data) {
+                    let id = item['id']
+                    if (id <= maxId) {
+                        continue;
+                    }
+                    maxId = id;
+                    let time = new Date(item['time'] * 1000);
+                    monitor.prepend("<div><span class='time'>" + date2str(time,'yyyy-MM-dd hh:mm:ss') + "</span><span class='line'>" + item['line'] + "</span></div>");
+                }
+            }).always(
+                function () {
+                    setTimeout(refresh_monitor, 1000);
+                }
+            );
+        }
+
+        refresh_monitor();
+
+    </script>
+{% endblock %}
