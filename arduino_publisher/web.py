@@ -26,6 +26,9 @@ def serial_monitor():
 def serial_monitor_data():
     return jsonify(reader.get_serial_monitor())
 
+@app.route('/metrics')
+def prometheus_metrics():
+    return reader.get_prometheus_metrics()
 
 @app.route('/parsed_values_data')
 def parsed_values_data():

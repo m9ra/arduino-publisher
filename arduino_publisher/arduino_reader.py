@@ -1,8 +1,12 @@
 import datetime
+import logging
 import traceback
 from threading import Thread
 from time import sleep
+
 import serial.tools.list_ports
+import unidecode as unidecode
+from prometheus_client import REGISTRY, generate_latest, Gauge
 
 
 class ArduinoReader(object):
@@ -11,6 +15,7 @@ class ArduinoReader(object):
         self._log_limit = log_limit
         self._serial_monitor = []
         self._parsed_values = {}
+        self._value_gauges = {}
         self._id = int(datetime.datetime.now().timestamp())
         self._is_connected = False
 
@@ -30,6 +35,9 @@ class ArduinoReader(object):
 
     def get_parsed_values(self):
         return dict(self._parsed_values)
+
+    def get_prometheus_metrics(self):
+        return generate_latest(REGISTRY)
 
     def _worker(self):
         while True:
@@ -86,6 +94,24 @@ class ArduinoReader(object):
             'updated_at': now.timestamp()
         }
 
+        try:
+            value_parts = value.split()
+            for i in range(0, len(value_parts), 2):
+                value_part = value_parts[i]
+                current_field = field
+                if i + 1 < len(value_parts):
+                    current_field += ' ' + value_parts[i + 1]
+
+                if current_field not in self._value_gauges:
+                    field_name = current_field.replace('.', '_').replace(' ', '_').replace('°', 'degree').replace('%', 'percent')
+                    field_name = unidecode.unidecode(field_name)
+                    self._value_gauges[current_field] = Gauge(f"field_{field_name}", f'Value of the field `{current_field}`.')
+
+                self._value_gauges[current_field].set(value_part)
+
+        except:
+            logging.exception("Prometheus metric parsing failed.")
+
         keys_to_delete = []
         for key, value in self._parsed_values.items():
             age = now.timestamp() - value['updated_at']
@@ -93,7 +119,8 @@ class ArduinoReader(object):
                 keys_to_delete.append(key)
 
         for key in keys_to_delete:
-            del self._parsed_values[key]
+            self._parsed_values.pop(key, None)
+            self._value_gauges.pop(key, None)
 
     def _update_serial_monitor(self, line: str):
         now = datetime.datetime.now()
